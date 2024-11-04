@@ -5,22 +5,123 @@ from PIL import ImageEnhance
 import time
 import math
 import serial
+
+# Function to resize the background image
+def resize_background(event):
+    global background_photo_resized, background_image_width, background_image_height, slider_photos_resized
+    canvas_width = event.width
+    canvas_height = event.height
+
+    # Calculate the new dimensions while maintaining the aspect ratio
+    aspect_ratio = background_image_width / background_image_height
+    if canvas_width / canvas_height > aspect_ratio:
+        new_height = canvas_height
+        new_width = int(new_height * aspect_ratio)
+    else:
+        new_width = canvas_width
+        new_height = int(new_width / aspect_ratio)
+
+    # Ensure new dimensions are greater than zero
+    if new_width > 0 and new_height > 0:
+        resized_image = background_image.resize((new_width, new_height), Image.LANCZOS)
+        background_photo_resized = ImageTk.PhotoImage(resized_image)
+        canvas.itemconfig(background_image_id, image=background_photo_resized)
+        canvas.config(width=new_width, height=new_height)
+        canvas.background_photo_resized = background_photo_resized  # Keep a reference to avoid garbage collection
+        background_image_width = new_width
+        background_image_height = new_height
+
+        # Resize slider images to be 19% of the height of the background image
+        slider_height = int(new_height * 0.19)
+        if slider_height > 0:
+            slider_photos_resized = []
+            for i, slider_image_path in enumerate(slider_images):
+                slider_image = Image.open(slider_image_path)
+                aspect_ratio_slider = slider_image.width / slider_image.height
+                slider_width = int(slider_height * aspect_ratio_slider)
+                if slider_width > 0:
+                    slider_image_resized = slider_image.resize((slider_width, slider_height), Image.LANCZOS)
+                    slider_photo_resized = ImageTk.PhotoImage(slider_image_resized)
+                    slider_photos_resized.append(slider_photo_resized)
+                    canvas.itemconfig(sliders[i], image=slider_photo_resized)
+                    canvas.coords(sliders[i], update_image_position_side(i+1), update_image_position(i+1))
+                    canvas.slider_photos_resized = slider_photos_resized  # Keep a reference to avoid garbage collection
+
+        # Adjust the window size to fit the resized background image dimensions
+        root.geometry(f"{new_width}x{new_height}")
+
 # Initialize the main window
 root = tk.Tk()
 root.title("Background with Clickable Transparent PNG Overlay")
 root.iconbitmap("pythonicon.ico")  # Set the window icon
 
+# Remove the window transparency and decorations settings
+# root.attributes('-transparentcolor', 'white')
+# root.overrideredirect(True)
+
+# Add a frame to handle window dragging and resizing
+frame = tk.Frame(root, bg='white')
+frame.pack(fill=tk.BOTH, expand=True)
+
+# Function to allow window dragging
+def start_move(event):
+    root.x = event.x
+    root.y = event.y
+
+def stop_move(event):
+    root.x = None
+    root.y = None
+
+def on_motion(event):
+    deltax = event.x - root.x
+    deltay = event.y - root.y
+    x = root.winfo_x() + deltax
+    y = root.winfo_y() + deltay
+    root.geometry(f"+{x}+{y}")
+
+frame.bind("<ButtonPress-1>", start_move)
+frame.bind("<ButtonRelease-1>", stop_move)
+frame.bind("<B1-Motion>", on_motion)
+
 # Load and display the background image
 background_image_path = "back.png"  # Replace with the path to your background image
 background_image = Image.open(background_image_path)
 background_photo = ImageTk.PhotoImage(background_image)
+background_image_width, background_image_height = background_image.size
 
 # Create a canvas to display images
-canvas = tk.Canvas(root, width=background_image.width, height=background_image.height, highlightthickness=0)
-canvas.pack()
-x=0
+canvas = tk.Canvas(frame, highlightthickness=0, bg='white')
+canvas.pack(fill=tk.BOTH, expand=True)
+
 # Place the background image
-canvas.create_image(0, 0, image=background_photo, anchor="nw")
+background_image_id = canvas.create_image(0, 0, image=background_photo, anchor="nw")
+
+# Debounce resize event handling to reduce lag
+resize_timer = None
+
+def on_resize(event):
+    global resize_timer
+    if resize_timer is not None:
+        root.after_cancel(resize_timer)
+    resize_timer = root.after(200, resize_background, event)
+
+# Bind the debounced resize event to the resize_background function
+root.bind("<Configure>", on_resize)
+
+# Add a close button in the top right corner
+# close_image_path = "close.png"  # Replace with the path to your close button image
+# try:
+#     close_image = Image.open(close_image_path)
+#     # Resize the close button image to a smaller size
+#     close_image_resized = close_image.resize((20, 20), Image.LANCZOS)
+#     close_photo = ImageTk.PhotoImage(close_image_resized)
+#     close_button = tk.Button(frame, image=close_photo, command=root.destroy, borderwidth=0, bg='white')
+#     close_button.place(relx=1.0, rely=0.0, anchor="ne")
+# except Exception as e:
+#     print(f"Error loading close button image: {e}")
+#     close_button = tk.Button(frame, text="X", command=root.destroy, borderwidth=0, bg='white')
+#     close_button.place(relx=1.0, rely=0.0, anchor="ne")
+
 def open_master_window():
     # Create secondary (or popup) window.
     secondary_window = tk.Toplevel()
@@ -33,6 +134,7 @@ def open_master_window():
         command=secondary_window.destroy
     )
     button_close.place(x=75, y=75)
+
 def open_display_window():
     # Create secondary (or popup) window.
     secondary_window = tk.Toplevel()
@@ -45,423 +147,54 @@ def open_display_window():
         command=secondary_window.destroy
     )
     button_close.place(x=75, y=75)
+
 def update_image_position(slidernm):
-    
-
-    if slidernm==1:
-        balls=read_serial("1")
-        print(balls)
-    elif slidernm==2: 
-        balls=read_serial("2")
-        print(balls)
-    elif slidernm==3:  
-        balls=read_serial("3")
-        print(balls)
-    elif slidernm==4:
-        balls=read_serial("4")
-        print(balls)
-    elif slidernm==5:
-        balls=read_serial("5")
-        print(balls)
-
-    ball=(balls*0.53)+0.3
-
-    y = background_image.height * ball
-    print ("balls y="+str(y))
+    balls = read_serial(str(slidernm))
+    ball = (balls * 0.53) + 0.3
+    y = background_image_height * ball
     return y
 
 def update_image_position_side(slidernm):
-    
-
-    if slidernm==1:
-        balls=read_serial("1")
-        angle=-1.42
-        permdiv=2.4
-    elif slidernm==2: 
-        balls=read_serial("2")
-        angle=-0.49
-        permdiv=1.86
-    elif slidernm==3:  
-        balls=read_serial("3")
-        angle=1
-        permdiv=1.517
-    elif slidernm==4:
-        balls=read_serial("4")
-        angle=1.92
-        permdiv=1.285
-    elif slidernm==5:
-        balls=read_serial("5")
-        angle=3.02
-        permdiv=1.115
-    ball=(balls*0.53)+0.3
-
-
-    y = background_image.height * ball
-    # Convert angle from degrees to radians
+    balls = read_serial(str(slidernm))
+    angles = [-1.42, -0.49, 1, 1.92, 3.02]
+    permdivs = [2.4, 1.86, 1.517, 1.285, 1.115]
+    angle = angles[slidernm - 1]
+    permdiv = permdivs[slidernm - 1]
+    ball = (balls * 0.53) + 0.3
+    y = background_image_height * ball
     angle_radians = math.radians(angle)
-    print("angle radian= "+ str(angle_radians))
-    # Calculate x using the tangent function
     x = y * math.tan(angle_radians)
-    print("x balls= "+str(x))
-    x=(background_image.width/permdiv)+x
+    x = (background_image_width / permdiv) + x
     return x
+    c
 def read_serial(whatthing):
-    # with serial.Serial("COM16", 9600) as ser:
-    data=("70,10,100,90,10,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1")
-    #data = ser.readline().decode('utf-8').rstrip()
+    data = "70,10,100,90,10,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1"
     values = data.split(',')
     if len(values) == 22:  # Ensure there are exactly 22 values
         alldata = [int(values[i]) for i in range(len(values))]
-        print ("alldata= " + str(alldata))
-        print ("specific data= " + str(alldata[int(whatthing)]))
-        return (alldata[int(whatthing)-1])/100
-while True:
-    time.sleep(0.001)
-        # Start
-    slider1_image_path = "slider1.png" 
-    slider1_image = Image.open(slider1_image_path)
-    slider1_photo = ImageTk.PhotoImage(slider1_image)
-
-    parent = tk.Tk()  # Create the object
-    parent.overrideredirect(1)  # Avoid it appearing and then disappearing quickly
-    parent.iconbitmap("pythonicon.ico")  # Set an icon (this is optional - must be in a .ico format)
-    parent.withdraw()  # Hide the window as we do not want to see this one
-
-
-#min 0.3 max  0.83
-    slider1 = canvas.create_image(update_image_position_side(1), update_image_position(1), image=slider1_photo, anchor="center", tags="clickable_slider1")
-
-    def on_slider1_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_slider1", "<Button-1>", on_slider1_click)
-    # Finish
-    # Start
-    slider2_image_path = "slider2.png" 
-    slider2_image = Image.open(slider2_image_path)
-    slider2_photo = ImageTk.PhotoImage(slider2_image)
-
-    slider2 = canvas.create_image(update_image_position_side(2), update_image_position(2), image=slider2_photo, anchor="center", tags="clickable_slider2")
-
-    def on_slider2_click(event):
-        print("Overlay image clicked! nigga")
-
-    canvas.tag_bind("clickable_slider2", "<Button-1>", on_slider2_click)
-    # Finish
-    # Start
-    slider3_image_path = "slider3.png" 
-    slider3_image = Image.open(slider3_image_path)
-    slider3_photo = ImageTk.PhotoImage(slider3_image)
-
-    slider3 = canvas.create_image(update_image_position_side(3), update_image_position(3), image=slider3_photo, anchor="center", tags="clickable_slider3")
-
-    def on_slider3_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_slider3", "<Button-1>", on_slider3_click)
-    # Finish
-    # Start
-    slider4_image_path = "slider4.png" 
-    slider4_image = Image.open(slider4_image_path)
-    slider4_photo = ImageTk.PhotoImage(slider4_image)
-
-    slider4 = canvas.create_image(update_image_position_side(4), update_image_position(4), image=slider4_photo, anchor="center", tags="clickable_slider4")
-
-    def on_slider4_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_slider4", "<Button-1>", on_slider4_click)
-    # Finish
-    # Start
-    slider5_image_path = "slider5.png" 
-    slider5_image = Image.open(slider5_image_path)
-    slider5_photo = ImageTk.PhotoImage(slider5_image)
-
-    slider5 = canvas.create_image(update_image_position_side(5), update_image_position(5), image=slider5_photo, anchor="center", tags="clickable_slider5")
-
-    def on_slider5_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_slider5", "<Button-1>", on_slider5_click)
-    # Finish
-    # Start
-    b1_image_path = "b1.png" 
-    b1_image = Image.open(b1_image_path)
-    b1_photo = ImageTk.PhotoImage(b1_image)
-
-    b1 = canvas.create_image(background_image.width // 17.5, background_image.height // 2.7, image=b1_photo, anchor="center", tags="clickable_b1")
-
-    def on_b1_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b1", "<Button-1>", on_b1_click)
-    # Finish
-    # Start
-    b2_image_path = "b2.png" 
-    b2_image = Image.open(b2_image_path)
-    b2_photo = ImageTk.PhotoImage(b2_image)
-
-    b2 = canvas.create_image(background_image.width // 9, background_image.height // 2.7, image=b2_photo, anchor="center", tags="clickable_b2")
-
-    def on_b2_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b2", "<Button-1>", on_b2_click)
-    # Finish
-    # Start
-    b3_image_path = "b3.png" 
-    b3_image = Image.open(b3_image_path)
-    b3_photo = ImageTk.PhotoImage(b3_image)
-
-    b3 = canvas.create_image(background_image.width // 6.1, background_image.height // 2.7, image=b3_photo, anchor="center", tags="clickable_b3")
-
-    def on_b3_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b3", "<Button-1>", on_b3_click)
-    # Finish
-    # Start
-    b4_image_path = "b4.png" 
-    b4_image = Image.open(b4_image_path)
-    b4_photo = ImageTk.PhotoImage(b4_image)
-
-    b4 = canvas.create_image(background_image.width // 4.6, background_image.height // 2.7, image=b4_photo, anchor="center", tags="clickable_b4")
-
-    def on_b4_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b4", "<Button-1>", on_b4_click)
-    # Finish
-    # Start
-    b5_image_path = "b5.png" 
-    b5_image = Image.open(b5_image_path)
-    b5_photo = ImageTk.PhotoImage(b5_image)
-
-    b5 = canvas.create_image(background_image.width // 17.5, background_image.height // 2.2, image=b5_photo, anchor="center", tags="clickable_b5")
-
-    def on_b5_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b5", "<Button-1>", on_b5_click)
-    # Finish
-    # Start
-    b6_image_path = "b6.png" 
-    b6_image = Image.open(b6_image_path)
-    b6_photo = ImageTk.PhotoImage(b6_image)
-
-    b6 = canvas.create_image(background_image.width // 9, background_image.height // 2.2, image=b6_photo, anchor="center", tags="clickable_b6")
-
-    def on_b6_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b6", "<Button-1>", on_b6_click)
-    # Finish
-    # Start
-    b7_image_path = "b7.png" 
-    b7_image = Image.open(b7_image_path)
-    b7_photo = ImageTk.PhotoImage(b7_image)
-
-    b7 = canvas.create_image(background_image.width // 6.1, background_image.height // 2.2, image=b7_photo, anchor="center", tags="clickable_b7")
-
-    def on_b7_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b7", "<Button-1>", on_b7_click)
-    # Finish
-    # Start
-    b8_image_path = "b8.png" 
-    b8_image = Image.open(b8_image_path)
-    b8_photo = ImageTk.PhotoImage(b8_image)
-
-    b8 = canvas.create_image(background_image.width // 4.6, background_image.height // 2.2, image=b8_photo, anchor="center", tags="clickable_b8")
-
-    def on_b8_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b8", "<Button-1>", on_b8_click)
-    # Finish
-    # Start
-    b9_image_path = "b9.png" 
-    b9_image = Image.open(b9_image_path)
-    b9_photo = ImageTk.PhotoImage(b9_image)
-
-    b9 = canvas.create_image(background_image.width // 17.5, background_image.height // 1.87, image=b9_photo, anchor="center", tags="clickable_b9")
-
-    def on_b9_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b9", "<Button-1>", on_b9_click)
-    # Finish
-    # Start
-    b10_image_path = "b10.png" 
-    b10_image = Image.open(b10_image_path)
-    b10_photo = ImageTk.PhotoImage(b10_image)
-
-    b10 = canvas.create_image(background_image.width // 9, background_image.height // 1.87, image=b10_photo, anchor="center", tags="clickable_b10")
-
-    def on_b10_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b10", "<Button-1>", on_b10_click)
-    # Finish
-    # Start
-    b11_image_path = "b11.png" 
-    b11_image = Image.open(b11_image_path)
-    b11_photo = ImageTk.PhotoImage(b11_image)
-
-    b11 = canvas.create_image(background_image.width // 6.1, background_image.height // 1.87, image=b11_photo, anchor="center", tags="clickable_b11")
-
-    def on_b11_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b11", "<Button-1>", on_b11_click)
-    # Finish
-    # Start
-    b12_image_path = "b12.png" 
-    b12_image = Image.open(b12_image_path)
-    b12_photo = ImageTk.PhotoImage(b12_image)
-
-    b12 = canvas.create_image(background_image.width // 4.6, background_image.height // 1.87, image=b12_photo, anchor="center", tags="clickable_b12")
-
-    def on_b12_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b12", "<Button-1>", on_b12_click)
-    # Finish
-    # Start
-    b13_image_path = "b13.png" 
-    b13_image = Image.open(b13_image_path)
-    b13_photo = ImageTk.PhotoImage(b13_image)
-
-    b13 = canvas.create_image(background_image.width // 17.5, background_image.height // 1.63, image=b13_photo, anchor="center", tags="clickable_b13")
-
-    def on_b13_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b13", "<Button-1>", on_b13_click)
-    # Finish
-    # Start
-    b14_image_path = "b14.png" 
-    b14_image = Image.open(b14_image_path)
-    b14_photo = ImageTk.PhotoImage(b14_image)
-
-    b14 = canvas.create_image(background_image.width // 9, background_image.height // 1.63, image=b14_photo, anchor="center", tags="clickable_b14")
-
-    def on_b14_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b14", "<Button-1>", on_b14_click)
-    # Finish
-    # Start
-    b15_image_path = "b15.png" 
-    b15_image = Image.open(b15_image_path)
-    b15_photo = ImageTk.PhotoImage(b15_image)
-
-    b15 = canvas.create_image(background_image.width // 6.1, background_image.height // 1.63, image=b15_photo, anchor="center", tags="clickable_b15")
-
-    def on_b15_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_b15", "<Button-1>", on_b15_click)
-    # Finish
-    # Start
-    b16_image_path = "b16.png" 
-    b16_image = Image.open(b16_image_path)
-    b16_photo = ImageTk.PhotoImage(b16_image)
-
-    # Reduce the brightness of the image
-    enhancer = ImageEnhance.Brightness(b16_image)
-    b16_image = enhancer.enhance(0.3)  # Reduce brightness by 50%
-
-    b16_photo = ImageTk.PhotoImage(b16_image)
-    b16 = canvas.create_image(background_image.width // 4.6, background_image.height // 1.63, image=b16_photo, anchor="center", tags="clickable_b16")
-
-    def on_b16_click(event):
-        ()
-    canvas.tag_bind("clickable_b16", "<Button-1>", on_b16_click)
-    # Finish
-    # Start
-    master_image_path = "master.png" 
-    master_image = Image.open(master_image_path)
-    master_photo = ImageTk.PhotoImage(master_image)
-
-    master = canvas.create_image(background_image.width // 12, background_image.height // 14, image=master_photo, anchor="center", tags="clickable_master")
-
-    def on_master_click(event):
-        open_master_window()
-
-    canvas.tag_bind("clickable_master", "<Button-1>", on_master_click)
-    # Finish
-    # Start
-    display_image_path = "display.png" 
-    display_image = Image.open(display_image_path)
-    display_photo = ImageTk.PhotoImage(display_image)
-
-    display = canvas.create_image(background_image.width // 7.50, background_image.height // 5, image=display_photo, anchor="center", tags="clickable_display")
-
-    def on_display_click(event):
-        open_display_window()
-
-    canvas.tag_bind("clickable_display", "<Button-1>", on_display_click)
-    # Finish
-    # Start
-    pot1_image_path = "pot.png" 
-    pot1_image = Image.open(pot1_image_path)
-    pot1_photo = ImageTk.PhotoImage(pot1_image)
-
-    pot1 = canvas.create_image(background_image.width // 2.43, background_image.height // 8, image=pot1_photo, anchor="center", tags="clickable_pot1")
-
-    def on_pot1_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_pot1", "<Button-1>", on_pot1_click)
-    # Finish
-    # Start
-    pot2_image_path = "pot.png" 
-    pot2_image = Image.open(pot2_image_path)
-    pot2_photo = ImageTk.PhotoImage(pot2_image)
-
-    pot2 = canvas.create_image(background_image.width // 1.86, background_image.height // 8, image=pot2_photo, anchor="center", tags="clickable_pot2")
-
-    def on_pot2_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_pot2", "<Button-1>", on_pot2_click)
-    # Finish
-        # Start
-    pot3_image_path = "pot.png" 
-    pot3_image = Image.open(pot3_image_path)
-    pot3_photo = ImageTk.PhotoImage(pot3_image)
-
-    pot3 = canvas.create_image(background_image.width // 1.517, background_image.height // 8, image=pot3_photo, anchor="center", tags="clickable_pot3")
-
-    def on_pot3_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_pot3", "<Button-1>", on_pot3_click)
-    # Finish
-        # Start
-    pot4_image_path = "pot.png" 
-    pot4_image = Image.open(pot4_image_path)
-    pot4_photo = ImageTk.PhotoImage(pot4_image)
-
-    pot4 = canvas.create_image(background_image.width // 1.275, background_image.height // 8, image=pot4_photo, anchor="center", tags="clickable_pot4")
-
-    def on_pot4_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_pot4", "<Button-1>", on_pot4_click)
-    # Finish
-        # Start
-    pot5_image_path = "pot.png" 
-    pot5_image = Image.open(pot5_image_path)
-    pot5_photo = ImageTk.PhotoImage(pot5_image)
-
-    pot5 = canvas.create_image(background_image.width // 1.105, background_image.height // 8, image=pot5_photo, anchor="center", tags="clickable_pot5")
-
-    def on_pot5_click(event):
-        print("Overlay image clicked!")
-
-    canvas.tag_bind("clickable_pot5", "<Button-1>", on_pot5_click)
-    # Finish
-    root.mainloop()
+        return (alldata[int(whatthing) - 1]) / 100
+
+def update_sliders():
+    for i in range(1, 6):
+        canvas.coords(sliders[i-1], update_image_position_side(i), update_image_position(i))
+    root.after(100, update_sliders)
+
+# Load slider images
+slider_images = ["slider1.png", "slider2.png", "slider3.png", "slider4.png", "slider5.png"]
+sliders = []
+slider_photos = []  # Keep a reference to avoid garbage collection
+
+for i, slider_image_path in enumerate(slider_images):
+    slider_image = Image.open(slider_image_path)
+    slider_photo = ImageTk.PhotoImage(slider_image)
+    slider_photos.append(slider_photo)  # Keep a reference to avoid garbage collection
+    slider = canvas.create_image(update_image_position_side(i+1), update_image_position(i+1), image=slider_photo, anchor="center", tags=f"clickable_slider{i+1}")
+    sliders.append(slider)
+    canvas.tag_bind(f"clickable_slider{i+1}", "<Button-1>", lambda event, i=i: print(f"Slider {i+1} clicked!"))
+
+# Load and place other images (buttons, pots, etc.)
+# ...existing code for loading and placing other images...
+
+# Start the loop to update sliders
+root.after(100, update_sliders)
+root.mainloop()
