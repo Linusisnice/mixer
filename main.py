@@ -108,20 +108,6 @@ def on_resize(event):
 # Bind the debounced resize event to the resize_background function
 root.bind("<Configure>", on_resize)
 
-# Add a close button in the top right corner
-# close_image_path = "close.png"  # Replace with the path to your close button image
-# try:
-#     close_image = Image.open(close_image_path)
-#     # Resize the close button image to a smaller size
-#     close_image_resized = close_image.resize((20, 20), Image.LANCZOS)
-#     close_photo = ImageTk.PhotoImage(close_image_resized)
-#     close_button = tk.Button(frame, image=close_photo, command=root.destroy, borderwidth=0, bg='white')
-#     close_button.place(relx=1.0, rely=0.0, anchor="ne")
-# except Exception as e:
-#     print(f"Error loading close button image: {e}")
-#     close_button = tk.Button(frame, text="X", command=root.destroy, borderwidth=0, bg='white')
-#     close_button.place(relx=1.0, rely=0.0, anchor="ne")
-
 def open_master_window():
     # Create secondary (or popup) window.
     secondary_window = tk.Toplevel()
@@ -168,7 +154,7 @@ def update_image_position_side(slidernm):
     return x
     c
 def read_serial(whatthing):
-    data = "70,10,100,90,10,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1"
+    data = "70,80,100,90,10,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1"
     values = data.split(',')
     if len(values) == 22:  # Ensure there are exactly 22 values
         alldata = [int(values[i]) for i in range(len(values))]
