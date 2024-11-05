@@ -5,6 +5,7 @@ from PIL import ImageEnhance
 import time
 import math
 import serial
+import threading
 
 # Function to resize the background image
 def resize_background(event):
@@ -152,13 +153,34 @@ def update_image_position_side(slidernm):
     x = y * math.tan(angle_radians)
     x = (background_image_width / permdiv) + x
     return x
-    c
+
+# Shared variable to store the latest serial data
+latest_data = None
+
+def read_serial_data():
+    global latest_data
+    while True:
+        try:
+            ser = serial.Serial("COM7", 115200)
+            while True:
+                data = ser.readline().decode().strip()
+                print("the data is= " + data)
+                values = data.split(',')
+                if len(values) == 22 and all(value.isdigit() for value in values):  # Ensure there are exactly 22 values and none are null
+                    latest_data = [int(values[i]) for i in range(len(values))]
+        except serial.SerialException as e:
+            print(f"Serial error: {e}")
+            time.sleep(1)  # Wait for a second before retrying
+
+# Start the serial reading thread
+serial_thread = threading.Thread(target=read_serial_data, daemon=True)
+serial_thread.start()
+
 def read_serial(whatthing):
-    data = "70,80,100,90,10,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1"
-    values = data.split(',')
-    if len(values) == 22:  # Ensure there are exactly 22 values
-        alldata = [int(values[i]) for i in range(len(values))]
-        return (alldata[int(whatthing) - 1]) / 100
+    global latest_data
+    if latest_data is not None:
+        return latest_data[int(whatthing) - 1] / 100
+    return 0
 
 def update_sliders():
     for i in range(1, 6):
