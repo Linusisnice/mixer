@@ -53,8 +53,7 @@ def resize_background(event):
 
 # Initialize the main window
 root = tk.Tk()
-root.title("Background with Clickable Transparent PNG Overlay")
-root.iconbitmap("pythonicon.ico")  # Set the window icon
+root.title("RƎMIX Control Panel")
 
 # Remove the window transparency and decorations settings
 # root.attributes('-transparentcolor', 'white')
