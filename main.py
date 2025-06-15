@@ -6,6 +6,8 @@ import time
 import math
 import serial
 import threading
+import os
+from set_volume import set_master_volume
 COMPORT = 'COM5'
 # Function to resize the background image
 def resize_background(event):
@@ -156,6 +158,16 @@ def update_image_position_side(slidernm):
 # Shared variable to store the latest serial data
 latest_data = None
 
+def process_master_volume_from_serial(data):
+    """
+    Expects data as a list of 11 integers. Sets master volume based on the second last value.
+    """
+    if len(data) == 11:
+        master_vol = data[-2]  # second last value
+        set_master_volume(master_vol)
+    else:
+        print(f"[DEBUG] process_master_volume_from_serial: data length is not 11, data={data}")
+
 def read_serial_data():
     global latest_data
     while True:
@@ -163,10 +175,13 @@ def read_serial_data():
             ser = serial.Serial(COMPORT, 115200)
             while True:
                 data = ser.readline().decode().strip()
-                print("the data is= " + data)
+                print("the data is= " + data)  # Remove normal debug print
                 values = data.split(',')
-                if len(values) == 22 and all(value.isdigit() for value in values):  # Ensure there are exactly 22 values and none are null
+                if len(values) == 11 and all(value.isdigit() for value in values):  # Ensure there are exactly 11 values and none are null
                     latest_data = [int(values[i]) for i in range(len(values))]
+                    process_master_volume_from_serial(latest_data)
+                else:
+                    print(f"[DEBUG] read_serial_data: invalid data received: {values}")
         except serial.SerialException as e:
             print(f"Serial error: {e}")
             time.sleep(1)  # Wait for a second before retrying
