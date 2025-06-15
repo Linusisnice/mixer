@@ -6,7 +6,7 @@ import time
 import math
 import serial
 import threading
-
+COMPORT = 'COM5'
 # Function to resize the background image
 def resize_background(event):
     global background_photo_resized, background_image_width, background_image_height, slider_photos_resized
@@ -160,7 +160,7 @@ def read_serial_data():
     global latest_data
     while True:
         try:
-            ser = serial.Serial("COM7", 115200)
+            ser = serial.Serial(COMPORT, 115200)
             while True:
                 data = ser.readline().decode().strip()
                 print("the data is= " + data)

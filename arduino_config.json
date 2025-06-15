@@ -1,0 +1,66 @@
+{
+  "1": {
+    "action": "run_command",
+    "parameter": "notepad.exe"
+  },
+  "2": {
+    "action": "none",
+    "parameter": ""
+  },
+  "3": {
+    "action": "none",
+    "parameter": ""
+  },
+  "4": {
+    "action": "none",
+    "parameter": ""
+  },
+  "5": {
+    "action": "none",
+    "parameter": ""
+  },
+  "6": {
+    "action": "none",
+    "parameter": ""
+  },
+  "7": {
+    "action": "none",
+    "parameter": ""
+  },
+  "8": {
+    "action": "none",
+    "parameter": ""
+  },
+  "9": {
+    "action": "none",
+    "parameter": ""
+  },
+  "10": {
+    "action": "none",
+    "parameter": ""
+  },
+  "11": {
+    "action": "none",
+    "parameter": ""
+  },
+  "12": {
+    "action": "none",
+    "parameter": ""
+  },
+  "13": {
+    "action": "none",
+    "parameter": ""
+  },
+  "14": {
+    "action": "none",
+    "parameter": ""
+  },
+  "15": {
+    "action": "none",
+    "parameter": ""
+  },
+  "16": {
+    "action": "none",
+    "parameter": ""
+  }
+}
